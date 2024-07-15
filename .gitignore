@@ -1,0 +1,18 @@
+# emacs编辑产生
+*.lisp~
+.#-emacs*
+
+# 编译产生
+*.fasl
+*.fas
+/build/
+# ECL编译产生
+*.o
+*.c
+*.data
+*.eclh
+
+# 数据文件(不应再出现在该文件夹内)
+*.db
+/config/
+
