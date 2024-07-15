@@ -16,3 +16,6 @@
 *.db
 /config/
 
+# 设计文档
+design.md
+
