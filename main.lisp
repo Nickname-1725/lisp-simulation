@@ -73,3 +73,31 @@
     (let (frame-list d-list)
       (push initial-frame frame-list)
       (handler frame-list d-list n))))
+
+(defun integrator-create (state-form-def)
+  "积分器生成器"
+  (let* ((var-name-pair-list (remove-if-not #'listp state-form-def))
+         (var-name-list (mapcar #'car var-name-pair-list))
+         (derivative-var-list (mapcar #'cadr var-name-pair-list))
+         (last-frame-form
+           (mapcar #'(lambda (name) (read-from-string (format nil "/~a-1/" name)))
+                   var-name-list))
+         (key-word-form
+           (mapcar #'(lambda (name) (read-from-string (format nil ":~a" name)))
+                   var-name-list))
+         (eval-last-frame-var
+           (mapcar #'(lambda (last-frame-var key-word)
+                       `(,last-frame-var (getf |frame(z-1)| ,key-word)))
+                   last-frame-form key-word-form))
+         (eval-derivative
+           (mapcar #'(lambda (name key-word) `(,name (getf |d(z-1)| ,key-word)))
+                   derivative-var-list key-word-form))
+         (eval-current-frame-var
+           (mapcar #'(lambda (var-name derivative-name last-var-name)
+                       `(,var-name (+ (* dt ,derivative-name) ,last-var-name)))
+                   var-name-list derivative-var-list last-frame-form)))
+    `(integrator (frame-list d-list dt)
+                 (let ((|frame(z-1)| (car frame-list)) (|d(z-1)| (car d-list)))
+                   (let* (,@eval-last-frame-var ,@eval-derivative)
+                     (let (,@eval-current-frame-var)
+                       (values ,@var-name-list)))))))
