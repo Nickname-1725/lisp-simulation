@@ -23,6 +23,20 @@
 ;; dy/dt = x
 ;; z + y = x
 
+;; 生成器参数
+;; state-form-def '(x (y dy) (z dz))
+;; 1. 指定模型中的参数种类
+;; 2. 指定必要的导数名称
+;; derivative-form-def '((dy (x) |x(z-1)|) (dz (y) (- |y(z-1)|))) ; 默认使用上一帧数据
+;; 1. 指定导数计算所需要的上一帧变量种类
+;; 2. 指定导数计算的表达式
+;; frame-inner-form-def '(x (y z) (+ (* 0.1 y) z))
+;; 1. 指定帧内求值所需要的帧内变量种类
+;; 2. 指定帧内求值的表达式
+
+;; 求解方法参数
+;; initial-frame '(:x 0 :y 0 :z 1)
+
 (defun sol-method (initial-frame dt n)
   (labels ((integrator (frame-list d-list dt)
              "积分器，根据导数和之前的值计算现在的值"
