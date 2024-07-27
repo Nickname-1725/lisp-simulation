@@ -101,3 +101,66 @@
                    (let* (,@eval-last-frame-var ,@eval-derivative)
                      (let (,@eval-current-frame-var)
                        (values ,@var-name-list)))))))
+
+(defun calc-inter-creat (derivative-form-def)
+  "计算器(帧间部分)生成器"
+  (let* ((derivative-dep-name (mapcar #'caadr derivative-form-def))
+         (derivative-dep-full-name
+           (mapcar #'(lambda (name) (read-from-string (format nil "/~a-1/" name)))
+                   derivative-dep-name))
+         (derivative-dep-key-word
+           (mapcar #'(lambda (name) (read-from-string (format nil ":~a" name)))
+                   derivative-dep-name))
+         (derivative-dependency-form
+           (mapcar #'(lambda (full-name key-word)
+                       `(,full-name (getf |frame(z-1)| ,key-word)))
+                   derivative-dep-full-name derivative-dep-key-word))
+         ;;
+         (derivative-name (mapcar #'car derivative-form-def))
+         (derivative-eval-form
+           (mapcar #'(lambda (name item)
+                       (let ((derivative-expr (caddr item)))
+                         `(,name ,derivative-expr)))
+                   derivative-name derivative-form-def))
+         (derivative-key-word
+           (mapcar #'(lambda (name)
+                       (read-from-string (format nil ":~a" name)))
+                   derivative-name))
+         (push-d-list-frame-form
+           (mapcar #'(lambda (name key-word)
+                       `(,key-word `,,name))
+                   derivative-name derivative-key-word))
+         ;(push-d-list-form `(push`(:y ,|y'| :z ,|z'|) d-list))
+         )
+    ;`(let* ((|frame(z-1)| (car frame-list))
+    ;        )
+    derivative-dependency-form
+    derivative-eval-form
+    push-d-list-frame-form)))
+
+;; state-form-def '(x (y dy) (z dz))
+;; 1. 指定模型中的参数种类
+;; 2. 指定必要的导数名称
+;; derivative-form-def '((dy (x) |x(z-1)|) (dz (y) (- |y(z-1)|))) ; 默认使用上一帧数据
+;; 1. 指定导数计算所需要的上一帧变量种类
+;; 2. 指定导数计算的表达式
+;; frame-inner-form-def '(x (y z) (+ (* 0.1 y) z))
+;; 1. 指定帧内求值所需要的帧内变量种类
+;; 2. 指定帧内求值的表达式
+
+
+(calc (frame-list d-list dt)
+      "计算器，进行一帧的计算"
+      (let* ((|frame-z-1| (car frame-list))
+             (|x(z-1)| (getf |frame-z-1| :x))
+             (|y(z-1)| (getf |frame-z-1| :y)))
+        ;; 计算导数
+        (let* ((|y'| |x(z-1)|)
+               (|z'| (- |y(z-1)|)))
+          ;; 积分器进行积分
+          (push `(:y ,|y'| :z ,|z'|) d-list)
+          (multiple-value-bind (y z) (integrator frame-list d-list dt)
+            ;; 进行帧内计算
+            (let ((x (+ (* 0.1 y) z)))
+              ;; 构造新的帧
+              `(:x ,x :y ,y :z ,z))))))
