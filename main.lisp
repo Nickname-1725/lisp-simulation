@@ -102,9 +102,15 @@
                      (let (,@eval-current-frame-var)
                        (values ,@var-name-list)))))))
 
-(defun calc-inter-creat (derivative-form-def)
-  "计算器(帧间部分)生成器"
-  (let* ((derivative-dep-name (mapcar #'caadr derivative-form-def))
+(defun derivative-proto (state-form-def dx)
+  "给定state-form-def，给定导数的符号，查询获得原变量的符号"
+  (car (find dx state-form-def
+             :test #'(lambda (dx item) (if (listp item) (eql dx (cadr item)))))))
+
+(defun calc-create (state-form-def derivative-form-def frame-inner-form-def)
+  "计算器生成器"
+  (let* (;; 导数计算的依赖
+         (derivative-dep-name (mapcar #'caadr derivative-form-def))
          (derivative-dep-full-name
            (mapcar #'(lambda (name) (read-from-string (format nil "/~a-1/" name)))
                    derivative-dep-name))
@@ -115,8 +121,10 @@
            (mapcar #'(lambda (full-name key-word)
                        `(,full-name (getf |frame(z-1)| ,key-word)))
                    derivative-dep-full-name derivative-dep-key-word))
-         ;;
+         ;; 帧间计算
          (derivative-name (mapcar #'car derivative-form-def))
+         (derivative-proto (mapcar #'(lambda (dx) (derivative-proto state-form-def dx))
+                                   derivative-name))
          (derivative-eval-form
            (mapcar #'(lambda (name item)
                        (let ((derivative-expr (caddr item)))
@@ -125,18 +133,42 @@
          (derivative-key-word
            (mapcar #'(lambda (name)
                        (read-from-string (format nil ":~a" name)))
-                   derivative-name))
+                   derivative-proto))
          (push-d-list-frame-form
            (mapcar #'(lambda (name key-word)
-                       `(,key-word `,,name))
+                       `(,key-word ,name))
                    derivative-name derivative-key-word))
-         ;(push-d-list-form `(push`(:y ,|y'| :z ,|z'|) d-list))
-         )
-    ;`(let* ((|frame(z-1)| (car frame-list))
-    ;        )
-    derivative-dependency-form
-    derivative-eval-form
-    push-d-list-frame-form)))
+         (push-d-list-frame-form
+           (cons 'list (reduce (lambda (a b) (append a b)) push-d-list-frame-form)))
+         ;; 帧内计算
+         (current-frame-name (mapcar #'car frame-inner-form-def))
+         (current-frame-expr (mapcar #'caddr frame-inner-form-def))
+         (current-frame-eval (mapcar #'(lambda (name expr) `(,name ,expr))
+                                     current-frame-name current-frame-expr))
+         ;; 此帧构造
+         (var-name
+           (mapcar #'(lambda (item) (if (listp item) (car item) item)) state-form-def))
+         (var-name-key
+           (mapcar #'(lambda (name) (read-from-string (format nil ":~a" name)))
+                   var-name))
+         (frame-construct-form
+           (mapcar #'(lambda (key name) `(,key ,name)) var-name-key var-name))
+         (frame-construct-form (reduce #'(lambda (x y) (append x y))
+                                       frame-construct-form)))
+    `(calc (frame-list d-list dt)
+           (let* ((|frame(z-1)| (car frame-list))
+                  ,@derivative-dependency-form)
+             (let* (,@derivative-eval-form)
+               (push ,push-d-list-frame-form d-list)
+               (multiple-value-bind ,derivative-proto (integrator frame-list d-list dt)
+                 (let (,@current-frame-eval)
+                   (list ,@frame-construct-form))))))))
+
+(let ((state-form-def '(x (y dy) (z dz)))
+      (derivative-form-def '((dy (x) /x-1/) (dz (y) (- /y-1/))))
+      (frame-inner-form-def '((x (y z) (+ (* 0.1 y) z)))))
+  (integrator-create derivative-form-def)
+  (calc-create state-form-def derivative-form-def frame-inner-form-def))
 
 ;; state-form-def '(x (y dy) (z dz))
 ;; 1. 指定模型中的参数种类
@@ -144,23 +176,6 @@
 ;; derivative-form-def '((dy (x) |x(z-1)|) (dz (y) (- |y(z-1)|))) ; 默认使用上一帧数据
 ;; 1. 指定导数计算所需要的上一帧变量种类
 ;; 2. 指定导数计算的表达式
-;; frame-inner-form-def '(x (y z) (+ (* 0.1 y) z))
+;; frame-inner-form-def '((x (y z) (+ (* 0.1 y) z)))
 ;; 1. 指定帧内求值所需要的帧内变量种类
 ;; 2. 指定帧内求值的表达式
-
-
-(calc (frame-list d-list dt)
-      "计算器，进行一帧的计算"
-      (let* ((|frame-z-1| (car frame-list))
-             (|x(z-1)| (getf |frame-z-1| :x))
-             (|y(z-1)| (getf |frame-z-1| :y)))
-        ;; 计算导数
-        (let* ((|y'| |x(z-1)|)
-               (|z'| (- |y(z-1)|)))
-          ;; 积分器进行积分
-          (push `(:y ,|y'| :z ,|z'|) d-list)
-          (multiple-value-bind (y z) (integrator frame-list d-list dt)
-            ;; 进行帧内计算
-            (let ((x (+ (* 0.1 y) z)))
-              ;; 构造新的帧
-              `(:x ,x :y ,y :z ,z))))))
