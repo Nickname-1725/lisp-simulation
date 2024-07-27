@@ -97,6 +97,7 @@
                        `(,var-name (+ (* dt ,derivative-name) ,last-var-name)))
                    var-name-list derivative-var-list last-frame-form)))
     `(integrator (frame-list d-list dt)
+                 "积分器，根据导数和之前的值计算现在的值"
                  (let ((|frame(z-1)| (car frame-list)) (|d(z-1)| (car d-list)))
                    (let* (,@eval-last-frame-var ,@eval-derivative)
                      (let (,@eval-current-frame-var)
@@ -156,6 +157,7 @@
          (frame-construct-form (reduce #'(lambda (x y) (append x y))
                                        frame-construct-form)))
     `(calc (frame-list d-list dt)
+           "计算器，进行一帧的计算"
            (let* ((|frame(z-1)| (car frame-list))
                   ,@derivative-dependency-form)
              (let* (,@derivative-eval-form)
@@ -164,11 +166,31 @@
                  (let (,@current-frame-eval)
                    (list ,@frame-construct-form))))))))
 
+(defun solver-create (state derivative frame-inner)
+  "求解器生成器"
+  (let ((inte-form (integrator-create state))
+        (calc-form (calc-create state derivative frame-inner))
+        (handler-form
+          `(handler (frame-list d-list n)
+                    "管理器，使计算器计算指定帧数"
+                    (cond
+                      ((eql n 0) frame-list)
+                      (t (push (calc frame-list d-list dt) frame-list)
+                         (handler frame-list d-list (1- n)))))))
+    `(lambda (initial-frame dt n)
+       (labels (,inte-form ,calc-form ,handler-form)
+         (let (frame-list d-list)
+           (push initial-frame frame-list)
+           (handler frame-list d-list n))))))
+
+;;; 此为示例
 (let ((state-form-def '(x (y dy) (z dz)))
       (derivative-form-def '((dy (x) /x-1/) (dz (y) (- /y-1/))))
       (frame-inner-form-def '((x (y z) (+ (* 0.1 y) z)))))
-  (integrator-create derivative-form-def)
-  (calc-create state-form-def derivative-form-def frame-inner-form-def))
+  (let* ((solver
+           (solver-create state-form-def derivative-form-def frame-inner-form-def))
+         (solver (eval solver)))
+    (format t "~a" (funcall solver '(:x 0 :y 0 :z 1) 0.1 100))))
 
 ;; state-form-def '(x (y dy) (z dz))
 ;; 1. 指定模型中的参数种类
