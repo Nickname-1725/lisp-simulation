@@ -1,5 +1,4 @@
 ;;;; 本脚本用于实施微分方程数值求解
-(load "solver-constructor.lisp")
 
 ;;; 此为示例
 (let ((state-form-def '(x (y dy) (z dz)))
