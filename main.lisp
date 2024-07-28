@@ -189,8 +189,10 @@
       (frame-inner-form-def '((x (y z) (+ (* 0.1 y) z)))))
   (let* ((solver
            (solver-create state-form-def derivative-form-def frame-inner-form-def))
-         (solver (eval solver)))
-    (format t "~a" (funcall solver '(:x 0 :y 0 :z 1) 0.1 100))))
+         (solver (eval solver))
+         (result (funcall solver '(:x 0 :y 0 :z 1) 0.1 100))
+    ;(format t "~{~a~%~}" result)
+    ))
 
 ;; state-form-def '(x (y dy) (z dz))
 ;; 1. 指定模型中的参数种类
@@ -201,3 +203,15 @@
 ;; frame-inner-form-def '((x (y z) (+ (* 0.1 y) z)))
 ;; 1. 指定帧内求值所需要的帧内变量种类
 ;; 2. 指定帧内求值的表达式
+
+;;; 此为另一个示例
+;; dx/dt = -y
+;; dy/dt = x
+(let ((state-form-def '((x dx) (y dy)))
+      (derivative-form-def '((dx (y) (- /y-1/)) (dy (x) /x-1/)))
+      (frame-inner-form-def '()))
+  (let* ((solver
+           (solver-create state-form-def derivative-form-def frame-inner-form-def))
+         (solver (eval solver))
+         (result (funcall solver '(:x 0 :y 0.2) 0.01 100)))
+    (format t "~{~a~%~}" result)))
