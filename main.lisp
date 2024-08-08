@@ -27,3 +27,35 @@
 
 (defun init-fun ()
   (demo-2))
+
+;;; 此为摆锤
+;; 1. 参数
+;;    1) k 为重心占总长的比例
+;;    2) [x] m 为摆锤的质量
+;;    3) l 为摆锤的长度
+;;    4) g 重力加速度
+;; 2. 状态量
+;;    1) theta: 摆锤的角度
+;;    2) alpha: 摆锤的角加速度
+;;    3) omega: 摆锤的角速度
+;; 3. 输出量
+;;    1) 位置: x, y为自由端的坐标; 固定端坐标为0, 0
+;;    2) 速度: vx, vy为自由端速度
+;;    3) 加速度: ax, ay为自由端加速度
+;; 公式
+;; - g sin(theta) = alpha l
+;; 
+
+(defun demo-pendulum ()
+  "单摆的计算, ~@
+  state-form-def与derivate-form-def相对的顺序对结果有一定的影响~@
+  两者顺序一致, 才能得到正确结果(原因在于values跟multiple-value-bind顺序一致性问题)"
+  (let ((state-form-def '((theta d-theta) (omega d-omega) alpha))
+        (derivative-form-def '((d-theta (omega) /omega-1/)
+                               (d-omega (alpha) /alpha-1/)))
+        (frame-inner-form-def '((alpha (theta) (/ (* -9.8 (sin theta)) 1.0)))))
+    (let* ((solver
+             (solver-constructor:solver-create state-form-def derivative-form-def frame-inner-form-def))
+           (solver (eval solver))
+           (result (funcall solver '(:theta 0.3 :alpha 0 :omega 0) 0.01 200)))
+      (format t "~{~a~%~}" result))))
