@@ -97,19 +97,29 @@
                  (let (,@current-frame-eval)
                    (list ,@frame-construct-form))))))))
 
+(defun derivative-sort (state-form-def derivative-form-def)
+  "给定state-form-def，给定derivative-form-def，使后者顺序与前者一致"
+  (let* ((derivative-name (remove-if-not #'listp state-form-def))
+         (derivative-name (mapcar #'cadr derivative-name))
+         (sorted-form (mapcar #'(lambda (name) (assoc name derivative-form-def))
+                              derivative-name)))
+    sorted-form))
+
 (defun solver-create (state derivative frame-inner)
   "求解器生成器"
-  (let ((inte-form (integrator-create state))
-        (calc-form (calc-create state derivative frame-inner))
-        (handler-form
-          `(handler (frame-list d-list n)
-                    "管理器，使计算器计算指定帧数"
-                    (cond
-                      ((eql n 0) frame-list)
-                      (t (push (calc frame-list d-list dt) frame-list)
-                         (handler frame-list d-list (1- n)))))))
-    `(lambda (initial-frame dt n)
-       (labels (,inte-form ,calc-form ,handler-form)
-         (let (frame-list d-list)
-           (push initial-frame frame-list)
-           (handler frame-list d-list n))))))
+  (let ((derivative (derivative-sort state derivative)))
+      (let ((inte-form (integrator-create state))
+            (calc-form (calc-create state derivative frame-inner))
+            (handler-form
+              `(handler (frame-list d-list n)
+                        "管理器，使计算器计算指定帧数"
+                        (cond
+                          ((eql n 0) frame-list)
+                          (t (push (calc frame-list d-list dt) frame-list)
+                             (handler frame-list d-list (1- n)))))))
+        `(lambda (initial-frame dt n)
+           (labels (,inte-form ,calc-form ,handler-form)
+             (let (frame-list d-list)
+               (push initial-frame frame-list)
+               (handler frame-list d-list n)))))))
+
