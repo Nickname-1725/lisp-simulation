@@ -47,9 +47,7 @@
 ;; 
 
 (defun demo-pendulum ()
-  "单摆的计算, ~@
-  state-form-def与derivate-form-def相对的顺序对结果有一定的影响~@
-  两者顺序一致, 才能得到正确结果(原因在于values跟multiple-value-bind顺序一致性问题)"
+  "单摆的计算"
   (let ((state-form-def '((theta d-theta) (omega d-omega) alpha))
         (derivative-form-def '((d-theta (omega) /omega-1/)
                                (d-omega (alpha) /alpha-1/)))
