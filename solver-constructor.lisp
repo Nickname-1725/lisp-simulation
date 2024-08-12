@@ -94,7 +94,7 @@
              (let* (,@derivative-eval-form)
                (push ,push-d-list-frame-form d-list)
                (multiple-value-bind ,derivative-proto (integrator frame-list d-list dt)
-                 (let (,@current-frame-eval)
+                 (let* (,@current-frame-eval)
                    (list ,@frame-construct-form))))))))
 
 (defun derivative-sort (state-form-def derivative-form-def)
