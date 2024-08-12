@@ -15,6 +15,7 @@
 # 数据文件(不应再出现在该文件夹内)
 *.db
 /config/
+/www/resource/
 
 # 设计文档
 design.md
