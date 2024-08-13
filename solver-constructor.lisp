@@ -105,9 +105,42 @@
                               derivative-name)))
     sorted-form))
 
+(defun topo-sort (graph)
+  "拓扑排序算法"
+  (labels ((in-degree-count (graph)
+             "数出邻接表每个节点的入度"
+             (mapcar #'(lambda (item) (list (car item) (length (cadr item)))) graph))
+           (sort-it (graph queue result)
+             (let* ((in-degree (in-degree-count graph))
+                    (0-degrees (remove-if-not
+                                #'(lambda (item) (eql 0 (cadr item))) in-degree))
+                    (0-degrees (mapcar #'car 0-degrees))
+                    (queue (append queue 0-degrees))
+                    (node (pop queue))
+                    (graph (remove-if #'(lambda (item) (find (car item) 0-degrees))
+                                      graph)))
+               (if (eql nil node)
+                   result
+                   (progn (push node result)
+                          (sort-it graph queue result))))))
+    (sort-it graph nil nil)))
+
+(defun inner-frame-eval-sort (state eval-form)
+  "对帧内计算的赋值表达式进行排序"
+  (let* ((graph (mapcar #'(lambda (item) (list (car item) (cadr item))) eval-form))
+         (known (mapcar #'car (remove-if-not #'listp state)))
+         (graph (mapcar
+                 #'(lambda (item)
+                     (list (car item)
+                           (remove-if #'(lambda (x) (find x known)) (cadr item))))
+                        graph))
+         (sorted-nodes (reverse (topo-sort graph))))
+    (mapcar #'(lambda (node) (assoc node eval-form)) sorted-nodes)))
+
 (defun solver-create (state derivative frame-inner)
   "求解器生成器"
-  (let ((derivative (derivative-sort state derivative)))
+  (let ((derivative (derivative-sort state derivative))
+        (frame-inner (inner-frame-eval-sort state frame-inner)))
       (let ((inte-form (integrator-create state))
             (calc-form (calc-create state derivative frame-inner))
             (handler-form
