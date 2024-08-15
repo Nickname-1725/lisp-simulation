@@ -60,22 +60,26 @@
 
 (defun demo-pendulum* ()
   "计算单摆，考虑接口传递数据(输出量不定义也可正常运行)"
-  (let ((state '((theta d-theta) (omega d-omega) alpha
-                 aOx aOy ; 输入量
-                 FAx FAy ; 输入量
-                 Ax Ay)) ; 输出量
-        (derivative '((d-theta (omega) /omega-1/)
-                      (d-omega (alpha) /alpha-1/)))
-        (frame-inner '((FAx () 1) (FAy () 1) (aOx () 0) (aOy () 0)
-                       (alpha (theta) ; 角动量方程
-                        (+ (/ (* (+ aOy -9.8) (sin theta)) 1.0)
-                         (/ (* aOx (cos theta)) 1.0)
-                         (/ FAx (cos theta))
-                         (/ FAy (sin theta))))
-                       (Ax (theta) (* 1.0 (sin theta)))
-                       (Ay (theta) (* -1.0 (cos theta))))))
-    (let* ((solver
-             (solver-constructor:solver-create state derivative frame-inner))
-           (eval-solver (eval solver))
-           (result (funcall eval-solver '(:theta 0.3 :alpha 0 :omega 0 :aOx 0 :aOy 0 :FAx 0 :FAy 0) 0.01 200)))
-      (format t "~{~a~%~}" result))))
+  (let ((m 1.0)
+        (l 0.5)
+        (k 1.0))
+    (let ((state '((theta d-theta) (omega d-omega) alpha
+                   aOx aOy ; 输入量
+                   FAx FAy ; 输入量
+                   Ax Ay)) ; 输出量
+          (derivative '((d-theta (omega) /omega-1/)
+                        (d-omega (alpha) /alpha-1/)))
+          (frame-inner `((FAx () 0) (FAy () 0) (aOx () 0) (aOy () 0)
+                         (alpha (theta FAx FAy aOx aOy) ; 角动量方程
+                                (/ (+ (* -1 (+ 9.8 aOy) (sin theta))
+                                      (* -1 aOx (cos theta))
+                                      (* ,k (/ FAx ,m) (cos theta))
+                                      (* ,k (/ FAy ,m) (sin theta)))
+                                   ,l))
+                         (Ax (theta) (* ,k ,l (sin theta)))
+                         (Ay (theta) (* -1 ,k ,l (cos theta))))))
+      (let* ((solver
+               (solver-constructor:solver-create state derivative frame-inner))
+             (eval-solver (eval solver))
+             (result (funcall eval-solver '(:theta 0.3 :alpha 0 :omega 0 :aOx 0 :aOy 0 :FAx 0 :FAy 0) 0.01 100)))
+        (format t "~{~a~%~}" result)))))
