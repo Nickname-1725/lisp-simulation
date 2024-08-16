@@ -39,8 +39,8 @@
   (car (find dx state-form-def
              :test #'(lambda (dx item) (if (listp item) (eql dx (cadr item)))))))
 
-(defun calc-create (state-form-def derivative-form-def frame-inner-form-def)
-  "计算器生成器"
+(defun calc-deri-create (state-form-def derivative-form-def)
+  "导数计算生成器"
   (let* (;; 导数计算的依赖
          (derivative-dep-name (mapcar #'caadr derivative-form-def))
          (derivative-dep-full-name
@@ -71,7 +71,47 @@
                        `(,key-word ,name))
                    derivative-name derivative-key-word))
          (push-d-list-frame-form
-           (cons 'list (reduce (lambda (a b) (append a b)) push-d-list-frame-form)))
+           (cons 'list (reduce (lambda (a b) (append a b)) push-d-list-frame-form))))
+    `(calc-deri (frame-list)
+           "导数计算器，根据当前完整状态的计算当前导数值"
+           (let* ((|frame(z-1)| (car frame-list))
+                  ,@derivative-dependency-form)
+             (let* (,@derivative-eval-form)
+               ,push-d-list-frame-form)))))
+
+(defun calc-create (state-form-def derivative-form-def frame-inner-form-def)
+  "计算器生成器"
+  (let* (;; 导数计算的依赖
+         ;(derivative-dep-name (mapcar #'caadr derivative-form-def))
+         ;(derivative-dep-full-name
+         ;  (mapcar #'(lambda (name) (read-from-string (format nil "/~a-1/" name)))
+         ;          derivative-dep-name))
+         ;(derivative-dep-key-word
+         ;  (mapcar #'(lambda (name) (read-from-string (format nil ":~a" name)))
+         ;          derivative-dep-name))
+         ;(derivative-dependency-form
+         ;  (mapcar #'(lambda (full-name key-word)
+         ;              `(,full-name (getf |frame(z-1)| ,key-word)))
+         ;          derivative-dep-full-name derivative-dep-key-word))
+         ;;; 帧间计算
+         (derivative-name (mapcar #'car derivative-form-def))
+         (derivative-proto (mapcar #'(lambda (dx) (derivative-proto state-form-def dx))
+                                   derivative-name))
+         ;(derivative-eval-form
+         ;  (mapcar #'(lambda (name item)
+         ;              (let ((derivative-expr (caddr item)))
+         ;                `(,name ,derivative-expr)))
+         ;          derivative-name derivative-form-def))
+         ;(derivative-key-word
+         ;  (mapcar #'(lambda (name)
+         ;              (read-from-string (format nil ":~a" name)))
+         ;          derivative-proto))
+         ;(push-d-list-frame-form
+         ;  (mapcar #'(lambda (name key-word)
+         ;              `(,key-word ,name))
+         ;          derivative-name derivative-key-word))
+         ;(push-d-list-frame-form
+         ;  (cons 'list (reduce (lambda (a b) (append a b)) push-d-list-frame-form)))
          ;; 帧内计算
          (current-frame-name (mapcar #'car frame-inner-form-def))
          (current-frame-expr (mapcar #'caddr frame-inner-form-def))
@@ -89,13 +129,13 @@
                                        frame-construct-form)))
     `(calc (frame-list d-list dt)
            "计算器，进行一帧的计算"
-           (let* ((|frame(z-1)| (car frame-list))
-                  ,@derivative-dependency-form)
-             (let* (,@derivative-eval-form)
-               (push ,push-d-list-frame-form d-list)
-               (multiple-value-bind ,derivative-proto (integrator frame-list d-list dt)
-                 (let* (,@current-frame-eval)
-                   (list ,@frame-construct-form))))))))
+           ;(let* ((|frame(z-1)| (car frame-list))
+           ;       ,@derivative-dependency-form)
+           ;  (let* (,@derivative-eval-form)
+           ;    (push ,push-d-list-frame-form d-list)
+           (multiple-value-bind ,derivative-proto (integrator frame-list d-list dt)
+             (let* (,@current-frame-eval)
+               (list ,@frame-construct-form)))))) ;))
 
 (defun derivative-sort (state-form-def derivative-form-def)
   "给定state-form-def，给定derivative-form-def，使后者顺序与前者一致"
@@ -147,18 +187,20 @@
   "求解器生成器"
   (let ((derivative (derivative-sort state derivative))
         (frame-inner (inner-frame-eval-sort state frame-inner)))
-      (let ((inte-form (integrator-create state))
-            (calc-form (calc-create state derivative frame-inner))
-            (handler-form
-              `(handler (frame-list d-list n)
-                        "管理器，使计算器计算指定帧数"
-                        (cond
-                          ((eql n 0) frame-list)
-                          (t (push (calc frame-list d-list dt) frame-list)
-                             (handler frame-list d-list (1- n)))))))
-        `(lambda (initial-frame dt n)
-           (labels (,inte-form ,calc-form ,handler-form)
-             (let (frame-list d-list)
-               (push initial-frame frame-list)
-               (handler frame-list d-list n)))))))
+    (let ((inte-form (integrator-create state))
+          (calc-deri-form (calc-deri-create state derivative))
+          (calc-form (calc-create state derivative frame-inner))
+          (handler-form
+            `(handler (frame-list d-list n)
+                      "管理器，使计算器计算指定帧数"
+                      (cond
+                        ((eql n 0) frame-list)
+                        (t (push (calc-deri frame-list) d-list)
+                           (push (calc frame-list d-list dt) frame-list)
+                           (handler frame-list d-list (1- n)))))))
+      `(lambda (initial-frame dt n)
+         (labels (,inte-form ,calc-deri-form ,calc-form ,handler-form)
+           (let (frame-list d-list)
+             (push initial-frame frame-list)
+             (handler frame-list d-list n)))))))
 
