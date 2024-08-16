@@ -147,7 +147,7 @@
          (sorted-nodes (reverse (topo-sort graph))))
     (mapcar #'(lambda (node) (assoc node eval-form)) sorted-nodes)))
 
-(defun handler-create (&key (method :eular))
+(defun handler-create (&key (method :RK4))
   (let ((eular `(handler (frame-list d-list n)
                          "管理器，使计算器计算指定帧数(欧拉法)"
                          (cond
@@ -174,14 +174,14 @@
     (cond ((eql method :eular) eular)
           ((eql method :RK4) RK4))))
 
-(defun solver-create (state derivative frame-inner)
+(defun solver-create (state derivative frame-inner &key (method :RK4))
   "求解器生成器"
   (let ((derivative (derivative-sort state derivative))
         (frame-inner (inner-frame-eval-sort state frame-inner)))
     (let ((inte-form (integrator-create state))
           (calc-deri-form (calc-deri-create state derivative))
           (calc-form (calc-create state derivative frame-inner))
-          (handler-form (handler-create :method :RK4) ))
+          (handler-form (handler-create :method method) ))
       `(lambda (initial-frame dt n)
          (labels (,inte-form ,calc-deri-form ,calc-form ,handler-form)
            (let (frame-list d-list)
