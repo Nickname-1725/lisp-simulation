@@ -48,7 +48,7 @@
                    derivative-dep-name))
          (derivative-dependency-form
            (mapcar #'(lambda (full-name key-word)
-                       `(,full-name (getf |frame(z-1)| ,key-word)))
+                       `(,full-name (getf frame-stat ,key-word)))
                    derivative-dep-name derivative-dep-key-word))
          ;; 帧间计算
          (derivative-name (mapcar #'car derivative-form-def))
@@ -69,10 +69,9 @@
                    derivative-name derivative-key-word))
          (push-d-list-frame-form
            (cons 'list (reduce (lambda (a b) (append a b)) push-d-list-frame-form))))
-    `(calc-deri (frame-list)
+    `(calc-deri (frame-stat)
            "导数计算器，根据当前完整状态的计算当前导数值"
-           (let* ((|frame(z-1)| (car frame-list))
-                  ,@derivative-dependency-form)
+           (let* (,@derivative-dependency-form)
              (let* (,@derivative-eval-form)
                ,push-d-list-frame-form)))))
 
@@ -148,6 +147,33 @@
          (sorted-nodes (reverse (topo-sort graph))))
     (mapcar #'(lambda (node) (assoc node eval-form)) sorted-nodes)))
 
+(defun handler-create (&key (method :eular))
+  (let ((eular `(handler (frame-list d-list n)
+                         "管理器，使计算器计算指定帧数(欧拉法)"
+                         (cond
+                           ((eql n 0) frame-list)
+                           (t (push (calc-deri (car frame-list)) d-list)
+                              (push (calc frame-list d-list dt) frame-list)
+                              (handler frame-list d-list (1- n))))))
+        (RK4 `(handler
+               (frame-list d-list n)
+               "管理器，使计算器计算指定帧数(4阶Runge-Kutta法)"
+               (cond
+                 ((eql n 0) frame-list)
+                 (t (let* ((k1 (calc-deri (car frame-list)))
+                           (k2 (calc-deri (calc frame-list (list k1) (/ dt 2))))
+                           (k3 (calc-deri (calc frame-list (list k2) (/ dt 2))))
+                           (k4 (calc-deri (calc frame-list (list k3) dt)))
+                           (k (mapcar #'(lambda (k1 k2 k3 k4)
+                                          (if (numberp k1)
+                                              (/ (+ k1 (* 2 k2) (* 2 k3) k4) 6) k1))
+                                      k1 k2 k3 k4)))
+                      (push k d-list)
+                      (push (calc frame-list d-list dt) frame-list)
+                      (handler frame-list d-list (1- n))))))))
+    (cond ((eql method :eular) eular)
+          ((eql method :RK4) RK4))))
+
 (defun solver-create (state derivative frame-inner)
   "求解器生成器"
   (let ((derivative (derivative-sort state derivative))
@@ -155,14 +181,7 @@
     (let ((inte-form (integrator-create state))
           (calc-deri-form (calc-deri-create state derivative))
           (calc-form (calc-create state derivative frame-inner))
-          (handler-form
-            `(handler (frame-list d-list n)
-                      "管理器，使计算器计算指定帧数"
-                      (cond
-                        ((eql n 0) frame-list)
-                        (t (push (calc-deri frame-list) d-list)
-                           (push (calc frame-list d-list dt) frame-list)
-                           (handler frame-list d-list (1- n)))))))
+          (handler-form (handler-create :method :RK4) ))
       `(lambda (initial-frame dt n)
          (labels (,inte-form ,calc-deri-form ,calc-form ,handler-form)
            (let (frame-list d-list)
