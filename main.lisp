@@ -60,7 +60,7 @@
 (defun demo-pendulum* (stream)
   "计算单摆，考虑接口传递数据(输出量不定义也可正常运行)"
   (let ((m 1.0)
-        (l 0.5)
+        (l 0.25)
         (k 1.0))
     (let ((state '((theta d-theta) (omega d-omega) alpha
                    aOx aOy ; 输入量
@@ -84,4 +84,4 @@
         (dump-result stream result)))))
 
 (defun init-fun ()
-  (demo-1 nil) (demo-2 nil) (demo-pendulum nil) (demo-pendulum* nil) nil)
+  (demo-1 nil) (demo-2 nil) (demo-pendulum nil) (demo-pendulum* t) nil)
