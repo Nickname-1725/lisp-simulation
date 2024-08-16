@@ -43,16 +43,13 @@
   "导数计算生成器"
   (let* (;; 导数计算的依赖
          (derivative-dep-name (mapcar #'caadr derivative-form-def))
-         (derivative-dep-full-name
-           (mapcar #'(lambda (name) (read-from-string (format nil "/~a-1/" name)))
-                   derivative-dep-name))
          (derivative-dep-key-word
            (mapcar #'(lambda (name) (read-from-string (format nil ":~a" name)))
                    derivative-dep-name))
          (derivative-dependency-form
            (mapcar #'(lambda (full-name key-word)
                        `(,full-name (getf |frame(z-1)| ,key-word)))
-                   derivative-dep-full-name derivative-dep-key-word))
+                   derivative-dep-name derivative-dep-key-word))
          ;; 帧间计算
          (derivative-name (mapcar #'car derivative-form-def))
          (derivative-proto (mapcar #'(lambda (dx) (derivative-proto state-form-def dx))
