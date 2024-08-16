@@ -1,32 +1,31 @@
 ;;;; 本脚本用于实施微分方程数值求解
 
+(defun dump-result (stream result)
+  (format stream "~{~a~%~}" result))
+
 ;;; 此为示例
-(defun demo-1 ()
+(defun demo-1 (stream)
   (let ((state-form-def '(x (y dy) (z dz)))
-        (derivative-form-def '((dy (x) /x-1/) (dz (y) (- /y-1/))))
+        (derivative-form-def '((dy (x) x) (dz (y) (- y))))
         (frame-inner-form-def '((x (y z) (+ (* 0.1 y) z)))))
     (let* ((solver
              (solver-constructor:solver-create state-form-def derivative-form-def frame-inner-form-def))
-           (solver (eval solver))
-           (result (funcall solver '(:x 0 :y 0 :z 1) 0.1 100)))
-      result
-      (format t "~{~a~%~}" result))))
+           (solver-eval (eval solver))
+           (result (funcall solver-eval '(:x 0 :y 0 :z 1) 0.1 100)))
+      (dump-result stream result))))
 
 ;;; 此为另一个示例
 ;; dx/dt = -y
 ;; dy/dt = x
-(defun demo-2 ()
+(defun demo-2 (stream)
   (let ((state-form-def '((x dx) (y dy)))
-        (derivative-form-def '((dx (y) (- /y-1/)) (dy (x) /x-1/)))
+        (derivative-form-def '((dx (y) (- y)) (dy (x) x)))
         (frame-inner-form-def '()))
     (let* ((solver
              (solver-constructor:solver-create state-form-def derivative-form-def frame-inner-form-def))
-           (solver (eval solver))
-           (result (funcall solver '(:x 0 :y 0.2) 0.01 100)))
-      (format t "~{~a~%~}" result))))
-
-(defun init-fun ()
-  (demo-2))
+           (solver-eval (eval solver))
+           (result (funcall solver-eval '(:x 0 :y 0.2) 0.01 100)))
+      (dump-result stream result))))
 
 ;;; 此为摆锤
 ;; 1. 参数
@@ -46,19 +45,19 @@
 ;; - g sin(theta) = alpha l
 ;; 
 
-(defun demo-pendulum ()
+(defun demo-pendulum (stream)
   "单摆的计算"
   (let ((state-form-def '((theta d-theta) (omega d-omega) alpha))
-        (derivative-form-def '((d-theta (omega) /omega-1/)
-                               (d-omega (alpha) /alpha-1/)))
+        (derivative-form-def '((d-theta (omega) omega)
+                               (d-omega (alpha) alpha)))
         (frame-inner-form-def '((alpha (theta) (/ (* -9.8 (sin theta)) 1.0)))))
     (let* ((solver
              (solver-constructor:solver-create state-form-def derivative-form-def frame-inner-form-def))
-           (solver (eval solver))
-           (result (funcall solver '(:theta 0.3 :alpha 0 :omega 0) 0.01 200)))
-      (format t "~{~a~%~}" result))))
+           (solver-eval (eval solver))
+           (result (funcall solver-eval '(:theta 0.3 :alpha 0 :omega 0) 0.01 200)))
+      (dump-result stream result))))
 
-(defun demo-pendulum* ()
+(defun demo-pendulum* (stream)
   "计算单摆，考虑接口传递数据(输出量不定义也可正常运行)"
   (let ((m 1.0)
         (l 0.5)
@@ -67,8 +66,8 @@
                    aOx aOy ; 输入量
                    FAx FAy ; 输入量
                    Ax Ay)) ; 输出量
-          (derivative '((d-theta (omega) /omega-1/)
-                        (d-omega (alpha) /alpha-1/)))
+          (derivative '((d-theta (omega) omega)
+                        (d-omega (alpha) alpha)))
           (frame-inner `((FAx () 0) (FAy () 0) (aOx () 0) (aOy () 0)
                          (alpha (theta FAx FAy aOx aOy) ; 角动量方程
                                 (/ (+ (* -1 (+ 9.8 aOy) (sin theta))
@@ -82,4 +81,7 @@
                (solver-constructor:solver-create state derivative frame-inner))
              (eval-solver (eval solver))
              (result (funcall eval-solver '(:theta 0.3 :alpha 0 :omega 0 :aOx 0 :aOy 0 :FAx 0 :FAy 0) 0.01 100)))
-        (format t "~{~a~%~}" result)))))
+        (dump-result stream result)))))
+
+(defun init-fun ()
+  (demo-1 nil) (demo-2 nil) (demo-pendulum nil) (demo-pendulum* nil) nil)
