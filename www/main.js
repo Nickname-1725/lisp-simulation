@@ -65,7 +65,7 @@ function make_anim_player (frame_list, context_decorator) {
     function () {
       let frame = frame_list[index];
       context_decorator && context_decorator(context);
-      frame.map((elem_obj) => (elem_parser (elem_obj, context)));
+      frame.map((elem_obj) => (elem_parser (elem_obj, context, draw_kit)));
       index = (index + 1) % len;
     }
   return player;
@@ -108,6 +108,26 @@ function request_ami (name, uri, config, create_player, force) {
                  },
                force);
 }*/
+
+function request_draw_pendulum (name, frame, obj, color, force) {
+  request_ami (name, "/pendulum?frame=" + frame, obj,
+               (data) => 
+                 { 
+                   console.log(data);
+                   let pendulum_player = 
+                   make_anim_player 
+                   (data, 
+                    (context) => 
+                      {
+                        context.lineCap = 'round';
+                        context.strokeStyle = color;
+                      });
+                   render_list.push(pendulum_player);
+                 },
+               force);
+}
+
+request_draw_pendulum ("pendulum-1", 100, {}, '#123491',true);
 
 /*
 // 更远景
