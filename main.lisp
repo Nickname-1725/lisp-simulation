@@ -57,7 +57,8 @@
            (result (funcall solver-eval '(:theta 0.3 :alpha 0 :omega 0) 0.01 200)))
       (dump-result stream result))))
 
-(defun demo-pendulum* (stream)
+(defun demo-pendulum* (&optional (stream nil))
+  (declare (ignorable stream))
   "计算单摆，考虑接口传递数据(输出量不定义也可正常运行)"
   (let ((m 1.0)
         (l 0.25)
@@ -81,7 +82,8 @@
                (solver-constructor:solver-create state derivative frame-inner))
              (eval-solver (eval solver))
              (result (funcall eval-solver '(:theta 0.3 :alpha 0 :omega 0 :aOx 0 :aOy 0 :FAx 0 :FAy 0) 0.01 100)))
-        (dump-result stream result)))))
+        ;(dump-result stream result)
+        result))))
 
-(defun init-fun ()
-  (demo-1 nil) (demo-2 nil) (demo-pendulum nil) (demo-pendulum* t) nil)
+;(defun init-fun ()
+;  (demo-1 nil) (demo-2 nil) (demo-pendulum nil) (demo-pendulum* t) nil)
