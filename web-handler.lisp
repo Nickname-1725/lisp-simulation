@@ -19,12 +19,7 @@
     ;(config-class-attr s-t config) ; 根据请求传入的数据配置摇摆树参数
     (let* (;(json-data (jonathan:to-json (swing-tree-animate s-t frame)))
            (result (demo-pendulum*))
-           (result (mapcar #'(lambda (frame)
-                               `((:|line|
-                                   (:|x1| 300 :|y1| 10
-                                    :|x2| ,(+ 300 (* 300 (or (getf frame :Ax) 0)))
-                                    :|y2| ,(+ 10 (* -300 (or (getf frame :Ay) 0)))))))
-                           result))
+           (result (convert result))
            (json-data (jonathan:to-json result)))
       ;(dump-json name json-data)
       json-data)))
