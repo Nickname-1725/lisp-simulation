@@ -85,5 +85,16 @@
         ;(dump-result stream result)
         result))))
 
+(defun demo-pendulum-1 (name)
+  (let* ((state (hinge-rod-state name))
+         (deri (hinge-rod-deri name))
+         (frame-inner (hinge-rod-frame-inner '(:m 1.0 :l 0.25 :k 1.0) name)))
+    (let* ((solver (solver-constructor:solver-create state deri frame-inner))
+           (eval-solver (eval solver))
+           (initial-cond '(:theta 0.3 :alpha 0 :omega 0 :aOx 0 :aOy 0 :FAx 0 :FAy 0))
+           (initial-cond (mapcar #'(lambda (x) (name-attach-sym name x)) initial-cond))
+           (result (funcall eval-solver initial-cond 0.01 100)))
+      result)))
+
 ;(defun init-fun ()
 ;  (demo-1 nil) (demo-2 nil) (demo-pendulum nil) (demo-pendulum* t) nil)
