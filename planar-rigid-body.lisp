@@ -18,32 +18,42 @@
   (values (loop for (key value) on plst by #'cddr collect key)
           (loop for (key value) on plst by #'cddr collect value)))
 
-(defun hinge-rod-model (para-list name)
-  "目前最好给定的name是无空格的，且无/或者|(或许可以用随机生成id代替);"
-  (let* ((state-form '((theta d-theta) (omega d-omega) alpha aOX aOy FAx FAy Ax Ay))
-         (sym-list (extract-sym-list state-form))
-         (deri-form '((d-theta (omega) omega) (d-omega (alpha) alpha)))
-         (frame-form '((FAx () 0) (FAy () 0) (aOx () 0) (aOy () 0)
-                       (alpha (theta FAx FAy aOx aOy)
-                        (/ (+ (* -1 (+ 9.8 aOy) (sin theta))
-                            (* -1 aOx (cos theta))
-                            (* k (/ FAx m) (cos theta))
-                            (* k (/ FAy m) (sin theta)))
-                         l))
-                       (Ax (theta) (* k l (sin theta)))
-                       (Ay (theta) (* -1 k l (cos theta))))))
-    (multiple-value-bind (para-keys para-values)
-        (collect-keys-values para-list)
-      (let* ((para-key-names
-               (mapcar #'(lambda (x) (read-from-string (format nil "~a" x)))
-                       para-keys))
-             (sym-value-pair (mapcar #'cons para-key-names para-values)))
-        (let ((named-state (name-the-form name sym-list state-form))
-              (named-deri (sublis sym-value-pair
-                                  (name-the-form name sym-list deri-form)))
-              (named-frame (sublis sym-value-pair
-                                   (name-the-form name sym-list frame-form))))
-          (values named-state named-deri named-frame))))))
+(defun model-construct (state-form deri-form frame-form)
+  `(lambda (para-list name)
+     "目前最好给定的name是无空格的，且无/或者|(或许可以用随机生成id代替);"
+     (let* ((state-form ',state-form)
+            (sym-list (extract-sym-list state-form))
+            (deri-form ',deri-form)
+            (frame-form ',frame-form))
+       (multiple-value-bind (para-keys para-values)
+           (collect-keys-values para-list)
+         (let* ((para-key-names
+                  (mapcar #'(lambda (x) (read-from-string (format nil "~a" x)))
+                          para-keys))
+                (sym-value-pair (mapcar #'cons para-key-names para-values)))
+           (let ((named-state (name-the-form name sym-list state-form))
+                 (named-deri (sublis sym-value-pair
+                                     (name-the-form name sym-list deri-form)))
+                 (named-frame (sublis sym-value-pair
+                                      (name-the-form name sym-list frame-form))))
+             (values named-state named-deri named-frame)))))))
+
+(let ((func-form
+       (model-construct
+        '((theta d-theta) (omega d-omega) alpha aOX aOy FAx FAy Ax Ay)
+        '((d-theta (omega) omega) (d-omega (alpha) alpha))
+        '((FAx () 0) (FAy () 0) (aOx () 0) (aOy () 0)
+          (alpha (theta FAx FAy aOx aOy)
+           (/ (+ (* -1 (+ 9.8 aOy) (sin theta))
+               (* -1 aOx (cos theta))
+               (* k (/ FAx m) (cos theta))
+               (* k (/ FAy m) (sin theta)))
+            l))
+          (Ax (theta) (* k l (sin theta)))
+          (Ay (theta) (* -1 k l (cos theta)))))))
+  (defun hinge-rod-model (para-list name)
+    (funcall (eval func-form) para-list name))
+  func-form)
 
 (let* ((name "simple-rod"))
   (multiple-value-bind (state deri frame-inner)
