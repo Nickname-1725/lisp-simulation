@@ -18,22 +18,11 @@
   (values (loop for (key value) on plst by #'cddr collect key)
           (loop for (key value) on plst by #'cddr collect value)))
 
-(defun hinge-rod-state (name)
-  "目前最好给定的name是无空格的，且无/或者|(或许可以用随机生成id代替); ~@
-  后续编写这个函数和下列几个函数的生成函数(模型的注册函数)"
-  (let* ((state-form '((theta d-theta) (omega d-omega) alpha aOX aOy FAx FAy Ax Ay))
-         (sym-list (extract-sym-list state-form)))
-    (name-the-form name sym-list state-form)))
-
-(defun hinge-rod-deri (name)
+(defun hinge-rod-model (para-list name)
+  "目前最好给定的name是无空格的，且无/或者|(或许可以用随机生成id代替);"
   (let* ((state-form '((theta d-theta) (omega d-omega) alpha aOX aOy FAx FAy Ax Ay))
          (sym-list (extract-sym-list state-form))
-         (deri-form '((d-theta (omega) omega) (d-omega (alpha) alpha))))
-    (name-the-form name sym-list deri-form)))
-
-(defun hinge-rod-frame-inner (para-list name)
-  (let* ((state-form '((theta d-theta) (omega d-omega) alpha aOX aOy FAx FAy Ax Ay))
-         (sym-list (extract-sym-list state-form))
+         (deri-form '((d-theta (omega) omega) (d-omega (alpha) alpha)))
          (frame-form '((FAx () 0) (FAy () 0) (aOx () 0) (aOy () 0)
                        (alpha (theta FAx FAy aOx aOy)
                         (/ (+ (* -1 (+ 9.8 aOy) (sin theta))
@@ -42,27 +31,29 @@
                             (* k (/ FAy m) (sin theta)))
                          l))
                        (Ax (theta) (* k l (sin theta)))
-                       (Ay (theta) (* -1 k l (cos theta)))))
-         (named-form (name-the-form name sym-list frame-form)))
-         ;; 参数
+                       (Ay (theta) (* -1 k l (cos theta))))))
     (multiple-value-bind (para-keys para-values)
         (collect-keys-values para-list)
       (let* ((para-key-names
                (mapcar #'(lambda (x) (read-from-string (format nil "~a" x)))
                        para-keys))
              (sym-value-pair (mapcar #'cons para-key-names para-values)))
-        (sublis sym-value-pair named-form)))))
+        (let ((named-state (name-the-form name sym-list state-form))
+              (named-deri (sublis sym-value-pair
+                                  (name-the-form name sym-list deri-form)))
+              (named-frame (sublis sym-value-pair
+                                   (name-the-form name sym-list frame-form))))
+          (values named-state named-deri named-frame))))))
 
-(let* ((name "simple-rod")
-       (state (hinge-rod-state name))
-       (deri (hinge-rod-deri name))
-       (frame-inner (hinge-rod-frame-inner '(:m 1.0 :l 0.25 :k 1.0) name)))
-  (let* ((solver (solver-constructor:solver-create state deri frame-inner))
-         (eval-solver (eval solver))
-         (initial-cond '(:theta 0.3 :alpha 0 :omega 0 :aOx 0 :aOy 0 :FAx 0 :FAy 0))
-         (initial-cond (mapcar #'(lambda (x) (name-attach-sym name x)) initial-cond))
-         (result (funcall eval-solver initial-cond 0.01 100)))
-    (dump-result t result)))
+(let* ((name "simple-rod"))
+  (multiple-value-bind (state deri frame-inner)
+      (hinge-rod-model '(:m 1.0 :l 0.25 :k 1.0) name)
+    (let* ((solver (solver-constructor:solver-create state deri frame-inner))
+           (eval-solver (eval solver))
+           (initial-cond '(:theta 0.3 :alpha 0 :omega 0 :aOx 0 :aOy 0 :FAx 0 :FAy 0))
+           (initial-cond (mapcar #'(lambda (x) (name-attach-sym name x)) initial-cond))
+           (result (funcall eval-solver initial-cond 0.01 100)))
+      (dump-result t result))))
 
 (defun convert (result)
   "对result计算结果进行转换"
