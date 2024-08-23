@@ -2,9 +2,9 @@
 (defun name-attach-sym (name sym)
   (cond
     ((keywordp sym)
-     (read-from-string (format nil ":~a~a" name sym)))
+     (read-from-string (format nil ":~a-~a" name sym)))
     ((numberp sym) sym)
-    (t (read-from-string (format nil "~a~a" name sym)))))
+    (t (read-from-string (format nil "~a-~a" name sym)))))
 
 (defun name-the-form (name sym-list target)
   (let* ((named-list (mapcar #'(lambda (x) (name-attach-sym name x)) sym-list))
