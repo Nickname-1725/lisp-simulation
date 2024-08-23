@@ -86,9 +86,6 @@
         result))))
 
 (defun demo-pendulum-1 (name)
-  ;(let* (;(state (hinge-rod-state name))
-         ;(deri (hinge-rod-deri name))
-         ;(frame-inner (hinge-rod-frame-inner '(:m 1.0 :l 0.25 :k 1.0) name)))
   (multiple-value-bind (state deri frame-inner)
       (hinge-rod-model '(:m 1.0 :l 0.25 :k 1.0) name)
     (let* ((solver (solver-constructor:solver-create state deri frame-inner))
