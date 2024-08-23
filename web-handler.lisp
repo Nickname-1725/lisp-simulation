@@ -19,8 +19,8 @@
     ;(config-class-attr s-t config) ; 根据请求传入的数据配置摇摆树参数
     (let* (;(json-data (jonathan:to-json (swing-tree-animate s-t frame)))
            ;(result (demo-pendulum*))
-           (result (demo-pendulum-1 ""))
-           (result (scale-trans-ami 300 300 10 (convert result)))
+           (result (demo-pendulum-1 "name"))
+           (result (scale-trans-ami 300 300 10 (hinge-rod-convert "name" result)))
            (json-data (jonathan:to-json (cdr (reverse result)))))
       ;(dump-json name json-data)
       json-data)))
