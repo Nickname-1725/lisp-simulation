@@ -65,14 +65,22 @@
            (result (funcall eval-solver initial-cond 0.01 100)))
       (dump-result t result))))
 
-(defun convert (result)
-  "对result计算结果进行转换"
-  (mapcar #'(lambda (frame)
-              `((:|line|
-                  (:|x1| 0 :|y1| 0
-                   :|x2| ,(or (getf frame :Ax) 0)
-                   :|y2| ,(- (or (getf frame :Ay) 0))))))
-          result))
+(defun hinge-rod-extract (name result)
+  (let* ((access-sym-list '(:Ax :Ay))
+         (named-sym-list (mapcar #'(lambda (x) (name-attach-sym name x))
+                                 access-sym-list))
+         (name-sym-pair (mapcar #'cons named-sym-list access-sym-list))
+         (extrated-result (sublis name-sym-pair result)))
+    extrated-result))
+
+(defun hinge-rod-convert (name result)
+  (let ((result (hinge-rod-extract name result)))
+    (mapcar #'(lambda (frame)
+                `((:|line|
+                    (:|x1| 0 :|y1| 0
+                     :|x2| ,(or (getf frame :Ax) 0)
+                     :|y2| ,(- (or (getf frame :Ay) 0))))))
+            result)))
 
 (defun scale-trans-ami (scale dx dy ami)
   "对动画进行缩放和平移"
